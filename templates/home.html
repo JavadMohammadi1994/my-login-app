@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}خانه{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1>خوش آمدی، {{ name or current_user.username }} عزیز! 🎉</h1>
+    <p>شما با موفقیت وارد شدید.</p>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">خروج</a>
+</div>
+{% endblock %}

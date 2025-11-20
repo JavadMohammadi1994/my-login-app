@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}ورود{% endblock %}
+
+{% block content %}
+<div class="card mx-auto" style="max-width: 400px;">
+    <div class="card-header text-center">
+        <h3>ورود به سامانه</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label>نام کاربری</label>
+                <input type="text" name="username" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label>رمز عبور</label>
+                <input type="password" name="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-success w-100">ورود</button>
+        </form>
+        <p class="text-center mt-3">
+            حساب نداری؟ <a href="{{ url_for('register') }}">ثبت‌نام کن</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
