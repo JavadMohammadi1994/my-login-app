@@ -5,7 +5,15 @@ import bcrypt
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_key_change_this_in_production'  # حتماً عوض کن!
+app.secret_key = 'super_secret_key_change_this_in_production'
+
+# این دو خط جدید هستن — خیلی مهم!
+with app.app_context():
+    init_db()   # دیتابیس و جدول در شروع برنامه ساخته بشه
+
+# تنظیمات Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 # تنظیمات Flask-Login
 login_manager = LoginManager()
