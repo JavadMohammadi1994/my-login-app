@@ -1,22 +1,35 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
-import os
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import sqlite3
 import bcrypt
-from datetime import datetime
+import os
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_key_change_this_in_production'
+app.secret_key = 'your_very_secret_key_change_in_production_123456'
 
-# این دو خط جدید هستن — خیلی مهم!
+# ←←← اول تابع init_db تعریف می‌شه ←←←
+def init_db():
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# ←←← حالا دیتابیس رو در شروع برنامه می‌سازیم ←←←
 with app.app_context():
-    init_db()   # دیتابیس و جدول در شروع برنامه ساخته بشه
+    init_db()
 
 # تنظیمات Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-
-
 login_manager.login_view = 'login'
 login_manager.login_message = 'لطفاً ابتدا وارد شوید.'
 login_manager.login_message_category = 'info'
@@ -39,42 +52,28 @@ def load_user(user_id):
         return User(row[0], row[1], row[2])
     return None
 
-# ساخت دیتابیس و جدول کاربران
-def init_db():
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            name TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# صفحه اصلی
+# روت‌ها
 @app.route('/')
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
     return redirect(url_for('login'))
 
-# صفحه خانه (بعد از لاگین)
 @app.route('/home')
 @login_required
 def home():
-    return render_template('home.html', name=current_user.name)
+    return render_template('home.html', name=current_user.name or current_user.username)
 
-# ثبت‌نام
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username'].strip()
         password = request.form['password']
-        name = request.form['name']
+        name = request.form.get('name', '').strip()
+
+        if not username or not password:
+            flash('نام کاربری و رمز عبور اجباری است!', 'danger')
+            return render_template('register.html')
 
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
@@ -84,7 +83,7 @@ def register():
             c.execute("INSERT INTO users (username, password, name) VALUES (?, ?, ?)",
                       (username, hashed, name))
             conn.commit()
-            flash('ثبت‌نام با موفقیت انجام شد! حالا می‌تونی وارد بشی.', 'success')
+            flash('ثبت‌نام با موفقیت انجام شد! حالا وارد شو.', 'success')
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
             flash('این نام کاربری قبلاً استفاده شده!', 'danger')
@@ -93,11 +92,10 @@ def register():
 
     return render_template('register.html')
 
-# ورود
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        username = request.form['username'].strip()
         password = request.form['password']
 
         conn = sqlite3.connect('database.db')
@@ -109,14 +107,13 @@ def login():
         if user_row and bcrypt.checkpw(password.encode('utf-8'), user_row[2]):
             user = User(user_row[0], user_row[1], user_row[3])
             login_user(user)
-            flash(f'خوش آمدی {user.name or user.username}!', 'success')
+            flash(f'خوش آمدی {user.name or username}!', 'success')
             return redirect(url_for('home'))
         else:
             flash('نام کاربری یا رمز عبور اشتباه است!', 'danger')
 
     return render_template('login.html')
 
-# خروج
 @app.route('/logout')
 @login_required
 def logout():
@@ -124,6 +121,6 @@ def logout():
     flash('با موفقیت خارج شدی.', 'info')
     return redirect(url_for('login'))
 
+# فقط برای اجرای محلی (در Render لازم نیست)
 if __name__ == '__main__':
-    init_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
